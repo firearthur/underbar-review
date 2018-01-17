@@ -179,10 +179,21 @@
     // if (accumulator !== 0) {
     //   accumulator = accumulator || collection[0];
     // }
-    var collCopy = [...collection];
+
+    // if the accumulator is not provided we're setting the accumulator
+    // to be the first value of the collection and remove that first value
+    // cause we use it as an initial value
+    var collCopy = collection;
     if (accumulator === undefined) {
-      accumulator = collCopy[0];
-      collCopy.shift();
+      if (Array.isArray(collection)) {
+        collCopy = [...collection];
+        accumulator = collCopy[0];
+        collCopy.shift();
+      } else if (typeof collection === 'object') {
+        collCopy = Object.assign({}, collection);
+        accumulator = collCopy[Object.keys(collCopy)[0]];
+        delete collCopy[Object.keys(collCopy)[0]];
+      } 
     }
     
     _.each(collCopy, function(element, key) {
@@ -208,12 +219,32 @@
   // Determine whether all of the elements match a truth test.
   _.every = function(collection, iterator) {
     // TIP: Try re-using reduce() here.
+    iterator = iterator || _.identity;
+    return _.reduce(collection, function(acc, element) {
+      return acc && !!iterator(element); //the first ! converts a number for example into a false and the other one turns it into true
+    }, true);    
+
   };
 
   // Determine whether any of the elements pass a truth test. If no iterator is
   // provided, provide a default one
   _.some = function(collection, iterator) {
     // TIP: There's a very clever way to re-use every() here.
+    var isSome = false;
+
+    _.each(collection, function(element) {
+      if (_.every([element], iterator)) {
+        isSome = true;
+      }
+    });
+    
+    return isSome;
+
+    //another way to do it!
+    // iterator = iterator || _.identity;
+    // return _.reduce(collection, function(acc, element) {
+    //   return acc || !!iterator(element); //the first ! converts a number for example into a false and the other one turns it into true
+    // }, false); 
   };
 
 
@@ -236,11 +267,30 @@
   //     bla: "even more stuff"
   //   }); // obj1 now contains key1, key2, key3 and bla
   _.extend = function(obj) {
+    var sources = [...arguments];
+    sources.shift();
+    _.each(sources, function(objSource, index) {
+      for (var key in objSource) {
+        obj[key] = objSource[key];
+      }
+
+    });
+    return obj;
   };
 
   // Like extend, but doesn't ever overwrite a key that already
   // exists in obj
   _.defaults = function(obj) {
+    var sources = [...arguments];
+    sources.shift();
+    _.each(sources, function(objSource, index) {
+      for (var key in objSource) {
+        if (!obj.hasOwnProperty(key)) {
+          obj[key] = objSource[key];
+        }
+      }
+    });
+    return obj;
   };
 
 
@@ -284,6 +334,19 @@
   // already computed the result for the given argument and return that value
   // instead if possible.
   _.memoize = function(func) {
+
+    var alreadyComputedArguments = {};
+
+    return function() {
+      var argumentsString = JSON.stringify(arguments);
+      if (alreadyComputedArguments.hasOwnProperty(argumentsString)) {
+        return alreadyComputedArguments[argumentsString];
+      } else {
+        alreadyComputedArguments[argumentsString] = func(...arguments);
+        return alreadyComputedArguments[argumentsString];
+      }
+    };
+
   };
 
   // Delays a function for the given number of milliseconds, and then calls
@@ -293,6 +356,12 @@
   // parameter. For example _.delay(someFunction, 500, 'a', 'b') will
   // call someFunction('a', 'b') after 500ms
   _.delay = function(func, wait) {
+    var argumentsArray = [...arguments];
+    argumentsArray.shift();
+    argumentsArray.shift();
+    setTimeout(function() {
+      func(...argumentsArray);
+    }, wait);
   };
 
 
